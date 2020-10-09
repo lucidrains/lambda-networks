@@ -1,6 +1,8 @@
+<img src="./λ.png" width="500px"></img>
+
 ## Lambda Networks - Pytorch
 
-Implementation of Lambda Networks, a new approach to image recognition that reaches SOTA on ImageNet. The new method utilizes lambda layer, which captures interactions by transforming contexts into linear functions, termed lambdas, and applying these linear functions to each input separately.
+Implementation of λ Networks, a new approach to image recognition that reaches SOTA on ImageNet. The new method utilizes λ layer, which captures interactions by transforming contexts into linear functions, termed lambdas, and applying these linear functions to each input separately.
 
 ## Install
 
@@ -46,6 +48,12 @@ layer = LambdaLayer(
 
 x = torch.randn(1, 32, 64, 64)
 layer(x) # (1, 32, 64, 64)
+```
+
+For fun, you can also import this as follows
+
+```python
+from lambda_networks import λLayer
 ```
 
 ## Todo
