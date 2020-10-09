@@ -21,17 +21,17 @@ class LambdaLayer(nn.Module):
         n,
         m,
         dim_k,
-        dim_v,
         heads = 4,
         dim_out = None,
         dim_u = 1):
         super().__init__()
-        assert (dim_v % heads) == 0, 'values dimension must be divisible by number of heads for multi-head query'
         dim_out = default(dim_out, dim)
         self.u = dim_u # intra-depth dimension
         self.heads = heads
 
-        dim_v //= heads
+        assert (dim_out % heads) == 0, 'values dimension must be divisible by number of heads for multi-head query'
+        dim_v = dim_out // heads
+
         self.to_q = nn.Conv2d(dim, dim_k * heads, 1, bias = False)
         self.to_k = nn.Conv2d(dim, dim_k * dim_u, 1, bias = False)
         self.to_v = nn.Conv2d(dim, dim_v * dim_u, 1, bias = False)

@@ -20,7 +20,6 @@ layer = LambdaLayer(
     n = 64 * 64,    # number of input pixels (64 x 64 image)
     m = 64 * 64,    # number of context (64 x 64 global)
     dim_k = 16,     # key dimension
-    dim_v = 64,     # value dimension
     heads = 4,      # number of heads, for multi-query
     dim_u = 1       # 'intra-depth' dimension
 )
