@@ -10,6 +10,8 @@ $ pip install lambda-networks
 
 ## Usage
 
+Global context
+
 ```python
 import torch
 from lambda_networks import LambdaLayer
@@ -18,7 +20,6 @@ layer = LambdaLayer(
     dim = 32,       # channels going in
     dim_out = 32,   # channels out
     n = 64 * 64,    # number of input pixels (64 x 64 image)
-    m = 64 * 64,    # number of context (64 x 64 global)
     dim_k = 16,     # key dimension
     heads = 4,      # number of heads, for multi-query
     dim_u = 1       # 'intra-depth' dimension
@@ -28,9 +29,28 @@ x = torch.randn(1, 32, 64, 64)
 layer(x) # (1, 32, 64, 64)
 ```
 
+Localized context
+
+```python
+import torch
+from lambda_networks import LambdaLayer
+
+layer = LambdaLayer(
+    dim = 32,
+    dim_out = 32,
+    r = 23,         # the receptive field for relative positional encoding (23 x 23)
+    dim_k = 16,
+    heads = 4,
+    dim_u = 4
+)
+
+x = torch.randn(1, 32, 64, 64)
+layer(x) # (1, 32, 64, 64)
+```
+
 ## Todo
 
-- [ ] Lambda layers with structured context
+- [x] Lambda layers with structured context
 - [ ] Document hyperparameters and put some sensible defaults
 - [ ] Test it out
 

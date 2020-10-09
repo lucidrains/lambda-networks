@@ -18,9 +18,9 @@ class LambdaLayer(nn.Module):
         self,
         dim,
         *,
-        n,
-        m,
         dim_k,
+        n = None,
+        r = None,
         heads = 4,
         dim_out = None,
         dim_u = 1):
@@ -35,10 +35,19 @@ class LambdaLayer(nn.Module):
         self.to_q = nn.Conv2d(dim, dim_k * heads, 1, bias = False)
         self.to_k = nn.Conv2d(dim, dim_k * dim_u, 1, bias = False)
         self.to_v = nn.Conv2d(dim, dim_v * dim_u, 1, bias = False)
-        self.pos_emb = nn.Parameter(torch.randn(n, m, dim_k, dim_u))
 
         self.norm_q = nn.BatchNorm2d(dim_k * heads)
         self.norm_v = nn.BatchNorm2d(dim_v * dim_u)
+
+        self.local_contexts = exists(r)
+        if exists(r):
+            assert (r % 2) == 1, 'Receptive kernel size should be odd'
+            self.padding = r // 2
+            self.R = nn.Parameter(torch.randn(dim_k, dim_u, 1, r, r))
+        else:
+            assert exists(n), 'You must specify the total sequence length (h x w)'
+            self.pos_emb = nn.Parameter(torch.randn(n, n, dim_k, dim_u))
+
 
     def forward(self, x):
         b, c, hh, ww, u, h = *x.shape, self.u, self.heads
@@ -57,10 +66,15 @@ class LambdaLayer(nn.Module):
         k = k.softmax(dim=-1)
 
         λc = einsum('b k u m, b v u m -> b k v', k, v)
-        λp = einsum('n m k u, b v u m -> b n k v', self.pos_emb, v)
-
         Yc = einsum('b h k n, b k v -> b n h v', q, λc)
-        Yp = einsum('b h k n, b n k v -> b n h v', q, λp)
+
+        if self.local_contexts:
+            v = rearrange(v, 'b v u (hh ww) -> b u v hh ww', hh = hh, ww = ww)
+            λp = F.conv3d(v, self.R, padding = (0, self.padding, self.padding))
+            Yp = einsum('b h k n, b k v n -> b n h v', q, λp.flatten(3))
+        else:
+            λp = einsum('n m k u, b v u m -> b n k v', self.pos_emb, v)
+            Yp = einsum('b h k n, b n k v -> b n h v', q, λp)
 
         Y = Yc + Yp
         out = rearrange(Y, 'b (hh ww) h v -> b (h v) hh ww', hh = hh, ww = ww)
