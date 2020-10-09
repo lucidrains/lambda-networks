@@ -31,9 +31,9 @@ layer(x) # (1, 32, 64, 64)
 
 ## Todo
 
-[] Lambda layers with structured context
-[] Document hyperparameters and put some sensible defaults
-[] Test it out
+- [ ] Lambda layers with structured context
+- [ ] Document hyperparameters and put some sensible defaults
+- [ ] Test it out
 
 ## Citations
 
