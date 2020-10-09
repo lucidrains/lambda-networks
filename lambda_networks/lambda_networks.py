@@ -60,20 +60,20 @@ class LambdaLayer(nn.Module):
         v = self.norm_v(v)
 
         q = rearrange(q, 'b (h k) hh ww -> b h k (hh ww)', h = h)
-        k = rearrange(k, 'b (k u) hh ww -> b k u (hh ww)', u = u)
-        v = rearrange(v, 'b (v u) hh ww -> b v u (hh ww)', u = u)
+        k = rearrange(k, 'b (k u) hh ww -> b u k (hh ww)', u = u)
+        v = rearrange(v, 'b (v u) hh ww -> b u v (hh ww)', u = u)
 
         k = k.softmax(dim=-1)
 
-        λc = einsum('b k u m, b v u m -> b k v', k, v)
+        λc = einsum('b u k m, b u v m -> b k v', k, v)
         Yc = einsum('b h k n, b k v -> b n h v', q, λc)
 
         if self.local_contexts:
-            v = rearrange(v, 'b v u (hh ww) -> b u v hh ww', hh = hh, ww = ww)
+            v = rearrange(v, 'b u v (hh ww) -> b u v hh ww', hh = hh, ww = ww)
             λp = F.conv3d(v, self.R, padding = (0, self.padding, self.padding))
             Yp = einsum('b h k n, b k v n -> b n h v', q, λp.flatten(3))
         else:
-            λp = einsum('n m k u, b v u m -> b n k v', self.pos_emb, v)
+            λp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
             Yp = einsum('b h k n, b n k v -> b n h v', q, λp)
 
         Y = Yc + Yp
