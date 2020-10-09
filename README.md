@@ -56,12 +56,6 @@ For fun, you can also import this as follows
 from lambda_networks import λLayer
 ```
 
-## Todo
-
-- [x] Lambda layers with structured context
-- [ ] Document hyperparameters and put some sensible defaults
-- [ ] Test it out
-
 ## Citations
 
 ```bibtex
