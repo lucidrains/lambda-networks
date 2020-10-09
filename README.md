@@ -1,6 +1,6 @@
 ## Lambda Networks - Pytorch
 
-Implementation of LambdaNetworks, an attention-based solution for image recognition that reaches SOTA. The title of the paper claims it is free of attention when in fact it converged on the linear-attention solution other groups have been working on, with the (key x values) rebranded as λ.
+Implementation of Lambda Networks, an attention-based solution for image recognition that reaches SOTA. The title of the paper suggests it is free of attention when in fact it converged on the linear-attention solution other groups have been working on, with the (key x values) rebranded as λ.
 
 ## Install
 
