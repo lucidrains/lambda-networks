@@ -4,6 +4,8 @@
 
 Implementation of λ Networks, a new approach to image recognition that reaches SOTA on ImageNet. The new method utilizes λ layer, which captures interactions by transforming contexts into linear functions, termed lambdas, and applying these linear functions to each input separately.
 
+<a href="https://www.youtube.com/watch?v=3qxJ2WD8p4w">Yannic Kilcher's paper review</a>
+
 ## Install
 
 ```bash
