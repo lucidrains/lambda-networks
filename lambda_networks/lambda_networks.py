@@ -77,4 +77,4 @@ class LambdaLayer(nn.Module):
 
         Y = Yc + Yp
         out = rearrange(Y, 'b (hh ww) h v -> b (h v) hh ww', hh = hh, ww = ww)
-        return out
+        return out.contiguous()
