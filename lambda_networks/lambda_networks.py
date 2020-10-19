@@ -65,16 +65,16 @@ class LambdaLayer(nn.Module):
         k = k.softmax(dim=-1)
 
         λc = einsum('b u k m, b u v m -> b k v', k, v)
-        Yc = einsum('b h k n, b k v -> b n h v', q, λc)
+        Yc = einsum('b h k n, b k v -> b h v n', q, λc)
 
         if self.local_contexts:
             v = rearrange(v, 'b u v (hh ww) -> b u v hh ww', hh = hh, ww = ww)
             λp = self.pos_conv(v)
-            Yp = einsum('b h k n, b k v n -> b n h v', q, λp.flatten(3))
+            Yp = einsum('b h k n, b k v n -> b h v n', q, λp.flatten(3))
         else:
             λp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
-            Yp = einsum('b h k n, b n k v -> b n h v', q, λp)
+            Yp = einsum('b h k n, b n k v -> b h v n', q, λp)
 
         Y = Yc + Yp
-        out = rearrange(Y, 'b (hh ww) h v -> b (h v) hh ww', hh = hh, ww = ww)
-        return out.contiguous()
+        out = rearrange(Y, 'b h v (hh ww) -> b (h v) hh ww', hh = hh, ww = ww)
+        return out
