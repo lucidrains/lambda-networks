@@ -70,17 +70,17 @@ class LambdaLayer(Layer):
 
         k = Softmax()(k)
 
-        Lc = Lambda(lambda x: einsum('b u k m, b u v m -> b k v', x[0], x[1]))([k, v])
-        Yc = Lambda(lambda x: einsum('b h k n, b k v -> b n h v', x[0], x[1]))([q, Lc])
+        Lc = einsum('b u k m, b u v m -> b k v', k, v)
+        Yc = einsum('b h k n, b k v -> b n h v', q, Lc)
 
         if self.local_contexts:
             v = Rearrange('b u v (hh ww) -> b v hh ww u', hh=hh, ww=ww)(v)
             Lp = self.pos_conv(v)
             Lp = Rearrange('b v h w k -> b v k (h w)')(Lp)
-            Yp = Lambda(lambda x: einsum('b h k n, b v k n -> b n h v', x[0], x[1]))([q, Lp])
+            Yp = einsum('b h k n, b v k n -> b n h v', q, Lp)
         else:
-            Lp = Lambda(lambda x: einsum('n m k u, b u v m -> b n k v', x[0], x[1]))([self.pos_emb, v])
-            Yp = Lambda(lambda x: einsum('b h k n, b n k v -> b n h v', x[0], x[1]))([q, Lp])
+            Lp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
+            Yp = einsum('b h k n, b n k v -> b n h v', q, Lp)
 
         Y = Add()([Yc, Yp])
         out = Rearrange('b (hh ww) h v -> b hh ww (h v)', hh = hh, ww = ww)(Y)
