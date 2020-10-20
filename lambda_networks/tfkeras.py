@@ -1,5 +1,6 @@
 from einops.layers.keras import Rearrange
-from keras.layers import Conv2D, BatchNormalization, Conv3D, ZeroPadding3D, Softmax, Lambda, Add
+from keras.layers import Conv2D, BatchNormalization, Conv3D, ZeroPadding3D, Softmax, Lambda, Add, Layer
+from keras import initializers
 from tensorflow import einsum
 
 # helpers functions
@@ -16,15 +17,16 @@ def default(val, d):
 
 class LambdaLayer(Layer):
     def __init__(
-            self,
-            *,
-            dim_k,
-            n=None,
-            r=None,
-            heads=4,
-            dim_out=None,
-            dim_u=1):
+        self,
+        *,
+        dim_k,
+        n = None,
+        r = None,
+        heads = 4,
+        dim_out = None,
+        dim_u = 1):
         super(LambdaLayer, self).__init__()
+
         self.out_dim = dim_out
         self.u = dim_u  # intra-depth dimension
         self.heads = heads
@@ -33,9 +35,13 @@ class LambdaLayer(Layer):
         self.dim_v = dim_out // heads
         self.dim_k = dim_k
         self.heads = heads
-        self.dim_u = dim_u
-        self.r = r
-        self.n = n
+
+        self.to_q = Conv2D(self.dim_k * heads, 1, use_bias=False)
+        self.to_k = Conv2D(self.dim_k * dim_u, 1, use_bias=False)
+        self.to_v = Conv2D(self.dim_v * dim_u, 1, use_bias=False)
+
+        self.norm_q = BatchNormalization()
+        self.norm_v = BatchNormalization()
 
         self.local_contexts = exists(r)
         if exists(r):
@@ -49,27 +55,11 @@ class LambdaLayer(Layer):
                                            initializer=initializers.random_normal,
                                            trainable=True)
 
-        self.to_q = Conv2D(self.dim_k * self.heads, 1, bias=False)
-        self.to_k = Conv2D(self.dim_k * self.dim_u, 1, bias=False)
-        self.to_v = Conv2D(self.dim_v * self.dim_u, 1, bias=False)
-        self.norm_q = BatchNormalization()
-        self.norm_v = BatchNormalization()
-        self.local_contexts = exists(self.r)
-        if exists(self.r):
-            assert (self.r % 2) == 1, 'Receptive kernel size should be odd'
-            self.pos_padding = ZeroPadding3D(padding=(0, self.r // 2, self.r // 2))
-            self.pos_conv = Conv3D(self.dim_k, (1, self.r, self.r), padding='valid')
-        else:
-            assert exists(self.n), 'You must specify the total sequence length (h x w)'
-            self.pos_emb = self.add_weight(name='pos_emb',
-                                           shape=(self.n, self.n, self.dim_k, self.dim_u),
-                                           initializer=initializers.random_normal,
-                                           trainable=True)
-
     def call(self, inputs, **kwargs):
         b, c, hh, ww = inputs.get_shape().as_list()
         u, h = self.u, self.heads
         x = inputs
+
         q = self.to_q(x)
         k = self.to_k(x)
         v = self.to_v(x)

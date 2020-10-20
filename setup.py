@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'lambda-networks',
   packages = find_packages(),
-  version = '0.2.2',
+  version = '0.3.0',
   license='MIT',
   description = 'Lambda Networks - Pytorch',
   author = 'Phil Wang',
