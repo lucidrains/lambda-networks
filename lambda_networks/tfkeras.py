@@ -1,7 +1,7 @@
 from einops.layers.tensorflow import Rearrange
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Conv3D, ZeroPadding3D, Softmax, Lambda, Add, Layer
 from tensorflow.keras import initializers
-from tensorflow import einsum
+from tensorflow import einsum, nn
 
 # helpers functions
 
@@ -68,19 +68,19 @@ class LambdaLayer(Layer):
         k = Rearrange('b hh ww (u k) -> b u k (hh ww)', u=u)(k)
         v = Rearrange('b hh ww (u v) -> b u v (hh ww)', u=u)(v)
 
-        k = Softmax()(k)
+        k = nn.softmax(k)
 
-        Lc = Lambda(lambda x: einsum('b u k m, b u v m -> b k v', x[0], x[1]))([k, v])
-        Yc = Lambda(lambda x: einsum('b h k n, b k v -> b n h v', x[0], x[1]))([q, Lc])
+        Lc = einsum('b u k m, b u v m -> b k v', k, v)
+        Yc = einsum('b h k n, b k v -> b n h v', q, Lc)
 
         if self.local_contexts:
             v = Rearrange('b u v (hh ww) -> b v hh ww u', hh=hh, ww=ww)(v)
             Lp = self.pos_conv(v)
             Lp = Rearrange('b v h w k -> b v k (h w)')(Lp)
-            Yp = Lambda(lambda x: einsum('b h k n, b v k n -> b n h v', x[0], x[1]))([q, Lp])
+            Yp = einsum('b h k n, b v k n -> b n h v', q, Lp)
         else:
-            Lp = Lambda(lambda x: einsum('n m k u, b u v m -> b n k v', x[0], x[1]))([self.pos_emb, v])
-            Yp = Lambda(lambda x: einsum('b h k n, b n k v -> b n h v', x[0], x[1]))([q, Lp])
+            Lp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
+            Yp = einsum('b h k n, b n k v -> b n h v', q, Lp)
 
         Y = Add()([Yc, Yp])
         out = Rearrange('b (hh ww) h v -> b hh ww (h v)', hh = hh, ww = ww)(Y)
