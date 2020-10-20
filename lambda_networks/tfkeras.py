@@ -52,10 +52,8 @@ class LambdaLayer(Layer):
                                            initializer=initializers.random_normal,
                                            trainable=True)
 
-    def call(self, inputs, **kwargs):
-        b, hh, ww, c = inputs.get_shape().as_list()
-        u, h = self.u, self.heads
-        x = inputs
+    def call(self, x, **kwargs):
+        b, hh, ww, c, u, h = *x.get_shape().as_list(), self.u, self.heads
 
         q = self.to_q(x)
         k = self.to_k(x)
@@ -82,14 +80,14 @@ class LambdaLayer(Layer):
             Lp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
             Yp = einsum('b h k n, b n k v -> b n h v', q, Lp)
 
-        Y = Add()([Yc, Yp])
+        Y = Yc + Yp
         out = Rearrange('b (hh ww) h v -> b hh ww (h v)', hh = hh, ww = ww)(Y)
         return out
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], input_shape[1], input_shape[2], self.out_dim)
+        return (*input_shape[:2], self.out_dim)
 
     def get_config(self):
-        config = {'output_dim': (self.input_shape[0], self.input_shape[1], self.input_shape[2], self.out_dim)}
+        config = {'output_dim': (*self.input_shape[:2], self.out_dim)}
         base_config = super(LambdaLayer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
