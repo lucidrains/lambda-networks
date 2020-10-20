@@ -63,6 +63,7 @@ from lambda_networks import λLayer
 <a href="https://github.com/shinel94">Shinel94</a> has added a Keras implementation! It won't be officially supported in this repository, so either copy / paste the code under `./lambda_networks/tfkeras.py` or make sure to install `tensorflow` and `keras` before running the following.
 
 ```python
+import tensorflow as tf
 from lambda_networks.tfkeras import LambdaLayer
 
 layer = LambdaLayer(
@@ -70,8 +71,11 @@ layer = LambdaLayer(
     r = 23,
     dim_k = 16,
     heads = 4,
-    dim_u = 4
+    dim_u = 1
 )
+
+x = tf.random.normal((1, 64, 64, 16))
+layer(x)
 ```
 
 ## Citations
