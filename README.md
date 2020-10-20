@@ -74,8 +74,8 @@ layer = LambdaLayer(
     dim_u = 1
 )
 
-x = tf.random.normal((1, 64, 64, 16))
-layer(x)
+x = tf.random.normal((1, 64, 64, 16)) # channel last format
+layer(x) # (1, 64, 64, 32)
 ```
 
 ## Citations
