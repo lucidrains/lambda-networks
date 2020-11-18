@@ -1,6 +1,5 @@
 import torch
 from torch import nn, einsum
-import torch.nn.functional as F
 from einops import rearrange
 
 # helpers functions
@@ -10,6 +9,15 @@ def exists(val):
 
 def default(val, d):
     return val if exists(val) else d
+
+def calc_rel_pos(n):
+    pos = torch.meshgrid(torch.arange(n), torch.arange(n))
+    pos = torch.stack(pos).flatten(1).T  # [n*n, 2] pos[n] = (i, j)
+    # [n*n, n*n, 2] rel_pos[n, m] = (rel_i, rel_j)
+    rel_pos = pos.unsqueeze(0) - pos.unsqueeze(1)
+    rel_pos += n-1  # shift value range from [-n+1, n-1] to [0, 2n-2]
+
+    return rel_pos
 
 # lambda layer
 
@@ -44,9 +52,9 @@ class LambdaLayer(nn.Module):
             assert (r % 2) == 1, 'Receptive kernel size should be odd'
             self.pos_conv = nn.Conv3d(dim_u, dim_k, (1, r, r), padding = (0, r // 2, r // 2))
         else:
-            assert exists(n), 'You must specify the total sequence length (h x w)'
-            self.pos_emb = nn.Parameter(torch.randn(n, n, dim_k, dim_u))
-
+            assert exists(n), 'You must specify the window size (n=h=w)'
+            self.rel_pos_emb = nn.Parameter(torch.randn(2*n-1, 2*n-1, dim_k, dim_u))
+            self.rel_pos = calc_rel_pos(n)
 
     def forward(self, x):
         b, c, hh, ww, u, h = *x.shape, self.u, self.heads
@@ -72,7 +80,8 @@ class LambdaLayer(nn.Module):
             λp = self.pos_conv(v)
             Yp = einsum('b h k n, b k v n -> b h v n', q, λp.flatten(3))
         else:
-            λp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
+            rel_pos_emb = self.rel_pos_emb[self.rel_pos[:, :, 0], self.rel_pos[:, :, 1]]
+            λp = einsum('n m k u, b u v m -> b n k v', rel_pos_emb, v)
             Yp = einsum('b h k n, b n k v -> b h v n', q, λp)
 
         Y = Yc + Yp
