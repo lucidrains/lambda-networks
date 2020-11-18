@@ -1,7 +1,8 @@
+import tensorflow as tf
 from einops.layers.tensorflow import Rearrange
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Conv3D, ZeroPadding3D, Softmax, Lambda, Add, Layer
 from tensorflow.keras import initializers
-from tensorflow import einsum, nn
+from tensorflow import einsum, nn, meshgrid
 
 # helpers functions
 
@@ -10,6 +11,13 @@ def exists(val):
 
 def default(val, d):
     return val if exists(val) else d
+
+def calc_rel_pos(n):
+    pos = tf.stack(meshgrid(tf.range(n), tf.range(n), indexing = 'ij'))
+    pos = Rearrange('n i j -> (i j) n')(pos)             # [n*n, 2] pos[n] = (i, j)
+    rel_pos = pos[None, :] - pos[:, None]                # [n*n, n*n, 2] rel_pos[n, m] = (rel_i, rel_j)
+    rel_pos += n - 1                                     # shift value range from [-n+1, n-1] to [0, 2n-2]
+    return rel_pos
 
 # lambda layer
 
@@ -46,11 +54,13 @@ class LambdaLayer(Layer):
             assert (r % 2) == 1, 'Receptive kernel size should be odd'
             self.pos_conv = Conv3D(dim_k, (1, r, r), padding='same')
         else:
-            assert exists(n), 'You must specify the total sequence length (h x w)'
-            self.pos_emb = self.add_weight(name='pos_emb',
-                                           shape=(n, n, dim_k, dim_u),
-                                           initializer=initializers.random_normal,
-                                           trainable=True)
+            assert exists(n), 'You must specify the window length (n = h = w)'
+            rel_length = 2 * n - 1
+            self.rel_pos_emb = self.add_weight(name='pos_emb',
+                                               shape=(rel_length, rel_length, dim_k, dim_u),
+                                               initializer=initializers.random_normal,
+                                               trainable=True)
+            self.rel_pos = calc_rel_pos(n)
 
     def call(self, x, **kwargs):
         b, hh, ww, c, u, h = *x.get_shape().as_list(), self.u, self.heads
@@ -77,7 +87,8 @@ class LambdaLayer(Layer):
             Lp = Rearrange('b v h w k -> b v k (h w)')(Lp)
             Yp = einsum('b h k n, b v k n -> b n h v', q, Lp)
         else:
-            Lp = einsum('n m k u, b u v m -> b n k v', self.pos_emb, v)
+            rel_pos_emb = tf.gather_nd(self.rel_pos_emb, self.rel_pos)
+            Lp = einsum('n m k u, b u v m -> b n k v', rel_pos_emb, v)
             Yp = einsum('b h k n, b n k v -> b n h v', q, Lp)
 
         Y = Yc + Yp
