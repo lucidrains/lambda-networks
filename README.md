@@ -23,7 +23,7 @@ from lambda_networks import LambdaLayer
 layer = LambdaLayer(
     dim = 32,       # channels going in
     dim_out = 32,   # channels out
-    n = 64 * 64,    # number of input pixels (64 x 64 image)
+    n = 64,         # size of the receptive window - max(height, width)
     dim_k = 16,     # key dimension
     heads = 4,      # number of heads, for multi-query
     dim_u = 1       # 'intra-depth' dimension
